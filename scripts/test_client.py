@@ -1,5 +1,6 @@
 import configparser
-from remote_compute.Client import Client
+from context import Client
+from datetime import datetime
 
 fileName = "data/Fentanyl_Addict_InterviewJake/audio.wav"
 config = configparser.ConfigParser()
@@ -7,17 +8,17 @@ config.read('module_config.ini')
 c = Client('firebase-key.json', 'clipai-e1d66.appspot.com')
 
 job = {
-    'job': 'transcribe',
-    'args': {
-        'wav_path': 'audio.wav' 
-    },
-    'job_files': [
-        {
-            'local_path': 'gettysburg10.wav',
-            'cloud_name': 'audio.wav',
-        }
+    'job_type': 'reverse_string',
+    'args': [
+        'Hello World!',
     ],
-    'config': dict(config['TRANSCRIPTION'])
+    'creation_time': datetime.now()
+    # 'job_files': [
+    #     {
+    #         'local_path': 'gettysburg10.wav',
+    #         'cloud_name': 'audio.wav',
+    #     }
+    # ],
 }
 
 print(c.create_job(job))
