@@ -1,24 +1,8 @@
-import configparser
 from context import Client
-from datetime import datetime
+from test_library import multiply_nth_primes
 
-fileName = "data/Fentanyl_Addict_InterviewJake/audio.wav"
-config = configparser.ConfigParser()
-config.read('module_config.ini')
-c = Client('firebase-key.json', 'clipai-e1d66.appspot.com')
+client = Client('firebase-key.json')
 
-job = {
-    'job_type': 'reverse_string',
-    'args': [
-        'Hello World!',
-    ],
-    'creation_time': datetime.now()
-    # 'job_files': [
-    #     {
-    #         'local_path': 'gettysburg10.wav',
-    #         'cloud_name': 'audio.wav',
-    #     }
-    # ],
-}
+result = client.run(multiply_nth_primes, [8000, 8001])
 
-print(c.create_job(job))
+print(result)

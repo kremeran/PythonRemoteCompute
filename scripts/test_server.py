@@ -1,22 +1,17 @@
-from context import Server
+from context import Server, Admin
+from test_library import multiply_nth_primes
 
-def reverse_string(input_string):
-    print('conferting')
-    return input_string[::-1]
-
-def job_switch(job_type, args):
-    match job_type:
-        case 'reverse_string':
-            result = reverse_string(args[0])
-            return result
-        case _:
-            # Move to result queue with error string as result
-            print('Invalid job type')
-
-server_config = {
-    'firebase_key': 'firebase-key.json',
-    'bucket_link': 'clipai-e1d66.appspot.com',
-    'supported_job_types': ['reverse_string']
+admin_config = {
+    'file_support': False,
+    'folder_path': 'clipai-e1d66.appspot.com',
+    'heartbeat_time': 10,
 }
 
-Server(server_config, job_switch)
+admin = Admin(admin_config, 'firebase-key.json')
+admin.clean_job_staging()
+admin.clean_results()
+admin.start(block=False)
+
+server = Server('firebase-key.json')
+server.load_function(multiply_nth_primes)
+server.start()
