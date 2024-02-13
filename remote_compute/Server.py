@@ -90,8 +90,17 @@ class Server():
     def _run_heartbeat(self):
         while True:
             server_ref = self.fb.db.document(f'servers/{self.server_id}')
-            server_obj = server_ref.get().to_dict()
-            server_obj['heartbeat'] = self.fb.fs.SERVER_TIMESTAMP
-            server_ref.set(server_obj)
+            try:
+                server_obj = server_ref.get().to_dict()
+                server_obj['heartbeat'] = self.fb.fs.SERVER_TIMESTAMP
+                server_ref.set(server_obj)
+            except:
+                print('Admin server probably deleted server doc. Creating new doc.')
+                new_server_obj = {
+                    'os': operating_system,
+                    'available_functions': list(self.available_functions.keys()),
+                    'heartbeat': self.fb.fs.SERVER_TIMESTAMP
+                }
+                server_ref.set(new_server_obj)
             sleep(self.admin_config['heartbeat_time'])
         
