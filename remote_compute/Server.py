@@ -1,20 +1,15 @@
 from remote_compute.utils import init_firebase, get_admin_config
-from google.cloud.firestore_v1.base_query import FieldFilter
-from pathlib import Path
 from sys import platform as operating_system
-from wmi import WMI
-from datetime import datetime
 import platform
 from time import sleep 
 from threading import Thread
 
 class Server():
     
-    available_functions = {}
-    
     def __init__(self, firebase_key_path, server_id=platform.node()):
         self.firebase_key_path = firebase_key_path
         self.server_id = server_id
+        self.available_functions = {}
         
     def start(self, block=True):
         self.admin_config = get_admin_config(self.server_id, self.firebase_key_path)

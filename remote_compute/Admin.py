@@ -45,6 +45,7 @@ class Admin():
     def clean_firebase(self):
         self.clean_job_staging()
         self.clean_servers()
+        self.clean_results()
         
     def _dispatch_job(self, job_id):
         servers = self.fb.db.collection('servers').get()
@@ -54,7 +55,7 @@ class Admin():
         best_server_queue_len = None
         for s in servers:
             server_obj = self.fb.db.document(f'servers/{s.id}').get().to_dict()
-            if job_obj['func_name'] in server_obj['available_functions']:
+            if job_obj['func_name'] in server_obj['available_functions'] and server_obj['alive']:
                 job_queue_ref = self.fb.db.collection(f'servers/{s.id}/job_queue')
                 queue_len = len(job_queue_ref.get())
                 if best_server_queue_len is None or queue_len < best_server_queue_len:
@@ -90,11 +91,18 @@ class Admin():
             serv_ref = self.fb.db.document(f'servers/{s.id}')
             serv_obj = serv_ref.get().to_dict()
             seconds_since_heartbeat = (server_time - serv_obj['heartbeat']).total_seconds()
-            if seconds_since_heartbeat < self.admin_config['heartbeat_time']-1:
+            if seconds_since_heartbeat < self.admin_config['heartbeat_time']-2:
                 serv_obj['alive'] = True
             else:
-                # Server is dead. TODO: Redistribute or error out jobs if needed
+                # Server is dead. Redistribute or error out jobs if needed
                 serv_obj['alive'] = False
+                jobs_in_queue = serv_ref.collection('job_queue')
+                for job in jobs_in_queue.get():
+                    job_ref = jobs_in_queue.document(job.id)
+                    job_obj = job_ref.get().to_dict()
+                    returned_job_ref = self.fb.db.document(f'job_staging/{job.id}')
+                    returned_job_ref.set(job_obj)
+                    job_ref.delete()
             serv_ref.set(serv_obj)
             
     def _start_heartbeat_loop(self, servers_ready):
