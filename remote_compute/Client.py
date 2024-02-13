@@ -4,7 +4,7 @@ from time import sleep
 from datetime import datetime
 import threading
 import platform
-import inspect
+import os
 from pprint import pformat
 from textwrap import indent
 
@@ -16,7 +16,7 @@ class Client():
         self.admin_config = get_admin_config(self.client_id, self.firebase_key_path)
         self.fb = init_firebase(self.admin_config, self.client_id, self.firebase_key_path)
 
-    def run(self, func_ref, args):
+    def run(self, func_ref, args, input_files=None, output_files=None):
         job = {
             'func_name': func_ref.__name__,
             'args': args,
@@ -25,6 +25,19 @@ class Client():
         }
         job_ref = self.fb.db.collection('job_staging').document()
         job_id = job_ref.id
+        
+        if input_files is not None:
+            f = []
+            for file in input_files:
+                self._store_file(file['local'], f'{job_id}/{file["cloud"]}')
+                f.append(file["cloud"])
+            job['input_files'] = f
+        if output_files is not None:
+            f = []
+            for file in output_files:
+                f.append(file['cloud'])
+            job['output_files'] = f
+        
         job_ref.set(job)
         
         response_ready = self._create_response_listener(job_id)
@@ -44,16 +57,32 @@ class Client():
             response_ref.delete()
             return False
         else:
+            if output_files is not None:
+                for file in output_files:
+                    self._fetch_file(job_id, file['cloud'], file['local'])
+            
+            if input_files is not None or output_files is not None:
+                self._delete_cloud_job_dir(job_id)
+            
             compute_time = (response_obj['finished_time'] - response_obj['request_time']).total_seconds()
             compute_server = response_obj['compute_server']
             
             response_ref.delete()
-            print(f'CLIENT: job run on [{compute_server}] in {compute_time} seconds.')
+            print(f'CLIENT: job [{job_id}] run on [{compute_server}] in {compute_time} seconds.')
             return result
 
     def _store_file(self, local_path, cloud_path):
-        blob = self.bucket.blob(cloud_path)
+        print(os.getcwd())
+        blob = self.fb.bucket.blob(cloud_path)
         blob.upload_from_filename(local_path)
+        
+    def _fetch_file(self, job_id, cloud_name, local_path):
+        blob = self.fb.bucket.blob(job_id + '/' + cloud_name)
+        blob.download_to_filename(local_path)
+        
+    def _delete_cloud_job_dir(self, job_id):
+        # TODO
+        pass
         
     def _create_response_listener(self, job_id):
         response_ready = threading.Event()

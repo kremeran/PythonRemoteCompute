@@ -3,13 +3,20 @@ from sys import platform as operating_system
 import platform
 from time import sleep 
 from threading import Thread
+from pathlib import Path
+import os
+import sys
+import shutil
+
 
 class Server():
     
-    def __init__(self, firebase_key_path, server_id=platform.node()):
+    def __init__(self, firebase_key_path, server_id=platform.node(), data_dir='.tmp'):
         self.firebase_key_path = firebase_key_path
         self.server_id = server_id
         self.available_functions = {}
+        self.base_dir = os.getcwd()
+        self.data_dir = self.base_dir + '/' + data_dir
         
     def start(self, block=True):
         self.admin_config = get_admin_config(self.server_id, self.firebase_key_path)
@@ -35,14 +42,13 @@ class Server():
         else:
             raise Exception('Function already added to server')
         
-    # def _fetch_file(self, job_id, cloud_name):
-    #     print('fetching file')
-    #     Path(self.data_dir + '/' + job_id).mkdir(parents=True, exist_ok=True)
-    #     cloud_path = job_id + '/' + cloud_name
-    #     blob = self.bucket.blob(cloud_path)
-    #     print('downloading' + cloud_path)
-    #     blob.download_to_filename(self.data_dir + '/' + cloud_path)
-    #     print('done')
+    def _fetch_file(self, job_id, cloud_name):
+        blob = self.fb.bucket.blob(job_id + '/' + cloud_name)
+        blob.download_to_filename(cloud_name)
+        
+    def _store_file(self, job_id, cloud_name):
+        blob = self.fb.bucket.blob(job_id + '/' + cloud_name)
+        blob.upload_from_filename(cloud_name)
          
     def _on_job_queue_snapshot(self):
         def on_snapshot(col_snapshot, changes, read_time):
@@ -50,9 +56,18 @@ class Server():
                 if change.type.name == 'REMOVED':
                     continue
                 elif change.type.name == 'ADDED':
-                    job_ref = self.fb.db.document(f'servers/{self.server_id}/job_queue/{change.document.id}')
+                    job_id = change.document.id
+                    job_ref = self.fb.db.document(f'servers/{self.server_id}/job_queue/{job_id}')
                     job_dict = job_ref.get().to_dict()
                     
+                    # Create dir to run job
+                    job_path = self.data_dir + '/' + job_id
+                    Path(job_path).mkdir(parents=True, exist_ok=True)
+                    os.chdir(job_path)
+                    if 'input_files' in job_dict:
+                        for cloud_name in job_dict['input_files']:
+                            self._fetch_file(job_id, cloud_name)
+                        
                     print(f'SERVER: Running Job [{change.document.id}]')
                     try:
                         result = self.execute_function(job_dict['func_name'], job_dict['args'])
@@ -65,6 +80,16 @@ class Server():
                         job_dict['finished_time'] = self.fb.fs.SERVER_TIMESTAMP
                         job_dict['compute_server'] = self.server_id
                         job_dict['error'] = True
+                    
+                    if 'output_files' in job_dict:
+                        for cloud_name in job_dict['output_files']:
+                            self._store_file(job_id, cloud_name)
+                            
+                    os.chdir(self.base_dir)
+                    try:
+                        shutil.rmtree(job_path)
+                    except OSError as e:
+                        print("Error: %s - %s." % (e.filename, e.strerror))
                     
                     result_ref = self.fb.db.document(f'results/{change.document.id}')
                     result_ref.set(job_dict)

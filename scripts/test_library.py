@@ -1,3 +1,12 @@
+import os
+import json
+
+def json_obj_to_values(input_fp, output_fp):
+    with open(input_fp, 'r') as ifp:
+        input_obj = json.load(ifp)
+        with open(output_fp, 'w') as ofp:
+            json.dump(list(input_obj.values()), ofp)
+
 def nth_prime_number(n):
     # initial prime number list
     prime_list = [2]
@@ -29,4 +38,5 @@ def nth_prime_number(n):
 def multiply_nth_primes(x, y):
     x_res = nth_prime_number(x)
     y_res = nth_prime_number(y)
+    x_res.fail2()
     return x_res*y_res
