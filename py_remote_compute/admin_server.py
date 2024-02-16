@@ -60,7 +60,7 @@ class AdminServer:
             self._check_heartbeat()
             sleep(self.admin_config['heartbeat_time'])
                     
-    def start(self, block=True):
+    def start(self, block:bool=True):
         
         # Create heartbeat listener. Wait for first check to complete
         servers_ready = Event()

@@ -7,6 +7,6 @@ setup(
     author_email='addison@kremtek.com',
     url='https://github.com/kremeran/PythonRemoteCompute',
     license='LICENSE',
-    packages=['src/py_remote_compute'],
+    packages=['py_remote_compute'],
     description='A python package that allows clients to sent requests to a remote compute server.',
 )
