@@ -38,5 +38,4 @@ def nth_prime_number(n):
 def multiply_nth_primes(x, y):
     x_res = nth_prime_number(x)
     y_res = nth_prime_number(y)
-    x_res.fail2()
     return x_res*y_res
